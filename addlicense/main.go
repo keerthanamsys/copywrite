@@ -484,11 +484,36 @@ func isGenerated(b []byte) bool {
 }
 
 func hasLicense(b []byte) bool {
+	// Read the config file
+	configFile := "license_check_config.json"
+	file, err := ioutil.ReadFile(configFile)
+	if err != nil {
+		fmt.Println("Error loading config:", err)
+		os.Exit(1)
+	}
+
+	// Parse JSON to extract keywords
+	var config struct {
+		Keywords []string `json:"keywords"`
+	}
+	if err := json.Unmarshal(file, &config); err != nil {
+		fmt.Println("Error parsing config:", err)
+		os.Exit(1)
+	}
+
+	// Convert first 1000 bytes to lowercase for case-insensitive search
 	n := 1000
 	if len(b) < 1000 {
 		n = len(b)
 	}
-	return bytes.Contains(bytes.ToLower(b[:n]), []byte("copyright")) ||
-		bytes.Contains(bytes.ToLower(b[:n]), []byte("mozilla public")) ||
-		bytes.Contains(bytes.ToLower(b[:n]), []byte("spdx-license-identifier"))
+	content := bytes.ToLower(b[:n])
+
+	// Check if any keyword is present
+	for _, keyword := range config.Keywords {
+		if bytes.Contains(content, []byte(strings.ToLower(keyword))) {
+			return true
+		}
+	}
+
+	return false
 }
